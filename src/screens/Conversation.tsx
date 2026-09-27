@@ -101,6 +101,8 @@ export function ConversationScreen() {
   const allMessages = [...messages, ...seededForwards]
   /** Контекстне меню репліки асистента: індекс повідомлення. */
   const [msgMenu, setMsgMenu] = useState<number | null>(null)
+  /** Контекстне меню картки подарунку (рішення 27.09.2026): id ідеї. */
+  const [ideaMenu, setIdeaMenu] = useState<string | null>(null)
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [sendTo, setSendTo] = useState<string | null>(null)
   // Кнопки-відповіді готової переписки — до першої відповіді.
@@ -175,9 +177,14 @@ export function ConversationScreen() {
         const saved = shortlist.some((i) => i.id === idea.id)
         const isBought = boughtIds.includes(idea.id)
         return (
-          <div
+          <IdeaCardShell
             key={idea.id}
-            className={`relative rounded-[20px] p-[15px] ${isBought ? 'bg-[#EFE6FF] ring-2 ring-[#807CF7]' : 'bg-white'}`}
+            bought={isBought}
+            open={ideaMenu === idea.id}
+            onHold={() => setIdeaMenu(idea.id)}
+            onClose={() => setIdeaMenu(null)}
+            onReply={() => setReplyTo(`${idea.title} · ${idea.price}`)}
+            onSend={() => setSendTo(`${idea.title} · ${idea.price} · ${idea.note}`)}
           >
             {/* Куплена: тонована картка з кільцем і позначкою над назвою */}
             {isBought && (
@@ -211,7 +218,7 @@ export function ConversationScreen() {
                 </button>
               </div>
             )}
-          </div>
+          </IdeaCardShell>
         )
       })}
     </div>
@@ -425,7 +432,36 @@ function Bubble({ msg, onHold }: { msg: Msg; onHold?: () => void }) {
   )
 }
 
-/** Меню репліки асистента: Reply · Send to another chat (iOS press-and-hold). */
+/** Картка ідеї з довгим натисканням → те саме меню, що й у репліки. */
+function IdeaCardShell({
+  bought,
+  open,
+  onHold,
+  onClose,
+  onReply,
+  onSend,
+  children,
+}: {
+  bought: boolean
+  open: boolean
+  onHold: () => void
+  onClose: () => void
+  onReply: () => void
+  onSend: () => void
+  children: React.ReactNode
+}) {
+  const hold = useHold(onHold)
+  return (
+    <div className="relative">
+      <div className={`relative select-none rounded-[20px] p-[15px] ${bought ? 'bg-[#EFE6FF] ring-2 ring-[#807CF7]' : 'bg-white'}`} {...hold}>
+        {children}
+      </div>
+      {open && <MessageMenu onClose={onClose} onReply={onReply} onSend={onSend} />}
+    </div>
+  )
+}
+
+/** Меню репліки асистента / картки ідеї: Reply · Send to another chat (iOS press-and-hold). */
 function MessageMenu({ onClose, onReply, onSend }: { onClose: () => void; onReply: () => void; onSend: () => void }) {
   return (
     <>
