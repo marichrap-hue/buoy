@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useShake } from './components/BubbleField'
 import { useReducedMotion } from './components/useReducedMotion'
-import { pop, soundState } from './lib/sound'
 import { PhoneFrame } from './components/PhoneFrame'
 import { TabBar } from './components/TabBar'
 import { ConversationScreen } from './screens/Conversation'
@@ -11,6 +10,7 @@ import { PeopleScreen } from './screens/People'
 import { PersonScreen } from './screens/Person'
 import { SearchesScreen } from './screens/Searches'
 import { ShortlistScreen } from './screens/Shortlist'
+import { SPLASH_KEY, SplashScreen } from './screens/Splash'
 
 // HashRouter — щоб переходи працювали на статичному GitHub Pages без налаштувань сервера.
 export default function App() {
@@ -39,7 +39,6 @@ export default function App() {
           >
             Shake phone
           </button>
-          <SoundCheck />
         </div>
       </div>
     </HashRouter>
@@ -49,46 +48,29 @@ export default function App() {
 /** Розмова — повноекранна, без таббару (вайрфрейм: замість нього поле відповіді). */
 function Shell({ shakeTick }: { shakeTick: number }) {
   const { pathname, search: query } = useLocation()
-  const fullScreen = pathname.startsWith('/search/') || pathname === '/search' || pathname.startsWith('/person')
+  const fullScreen = pathname.startsWith('/search/') || pathname === '/search' || pathname.startsWith('/person') || pathname === '/splash'
+  // Перший вхід у сесії — сплеш (тап на ньому і дає дозвіл на звук).
+  let seen = false
+  try {
+    seen = sessionStorage.getItem(SPLASH_KEY) === '1'
+  } catch {
+    seen = true
+  }
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col">
         <Routes>
-          <Route path="/searches" element={<SearchesScreen shakeTick={shakeTick} />} />
+          <Route path="/splash" element={<SplashScreen />} />
+          <Route path="/searches" element={seen ? <SearchesScreen shakeTick={shakeTick} /> : <Navigate to="/splash" replace />} />
           {/* key за ?id — інший пошук = новий екран зі своєю перепискою */}
           <Route path="/search" element={<ConversationScreen key={query} />} />
           <Route path="/people" element={<PeopleScreen />} />
           <Route path="/person" element={<PersonScreen key={query} />} />
           <Route path="/shortlist" element={<ShortlistScreen />} />
-          <Route path="*" element={<Navigate to="/searches" replace />} />
+          <Route path="*" element={<Navigate to={seen ? '/searches' : '/splash'} replace />} />
         </Routes>
       </div>
       {!fullScreen && <TabBar />}
     </>
-  )
-}
-
-/**
- * Прототипний індикатор звуку під телефоном (27.09.2026): показує, чи браузер
- * уже дозволив аудіо (після першого дотику), і кнопка «Test sound» грає «пух»
- * гарантовано з жесту користувача.
- */
-function SoundCheck() {
-  const [state, setState] = useState(soundState())
-  useEffect(() => {
-    const t = window.setInterval(() => setState(soundState()), 500)
-    return () => window.clearInterval(t)
-  }, [])
-  return (
-    <div className="flex items-center gap-[10px] text-[13px] text-ink">
-      <span className="opacity-60">Sound: {state === 'on' ? 'on' : state === 'none' ? 'unsupported' : 'waiting for a tap'}</span>
-      <button
-        type="button"
-        onClick={() => pop(120)}
-        className="rounded-full bg-white/70 px-[14px] py-[7px] font-semibold hover:bg-white"
-      >
-        Test sound
-      </button>
-    </div>
   )
 }

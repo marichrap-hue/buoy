@@ -13,8 +13,7 @@ function getCtx(): AudioContext | null {
   if (typeof window === 'undefined' || !('AudioContext' in window)) return null
   if (!ctx) {
     ctx = new AudioContext()
-    // Діагностика (і в проді): стан контексту та скільки разів зіграло.
-    ;(window as unknown as { __sound?: unknown }).__sound = { ctx, pop: () => pop(120), played: () => played }
+    if (import.meta.env.DEV) (window as unknown as { __sound?: unknown }).__sound = { ctx, played: () => played }
   }
   return ctx
 }
@@ -88,9 +87,8 @@ function play(c: AudioContext, size: number) {
 // Самореєстрація: модуль перезавантажився (HMR) — слухачі теж. Виклик у main.tsx лишається сумісним.
 if (typeof window !== 'undefined') armSound()
 
-/** Стан звуку для індикатора: 'off' — контекст ще не створено / браузер не дав; 'on' — грає. */
-export function soundState(): 'on' | 'off' | 'none' {
-  if (typeof window === 'undefined' || !('AudioContext' in window)) return 'none'
-  if (!ctx) return 'off'
-  return ctx.state === 'running' ? 'on' : 'off'
+/** Явне розблокування з обробника жесту (тап на сплеші). */
+export function unlockSound() {
+  const c = getCtx()
+  if (c && c.state === 'suspended') void c.resume()
 }
