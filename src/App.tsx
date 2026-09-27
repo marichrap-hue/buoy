@@ -10,7 +10,7 @@ import { PeopleScreen } from './screens/People'
 import { PersonScreen } from './screens/Person'
 import { SearchesScreen } from './screens/Searches'
 import { ShortlistScreen } from './screens/Shortlist'
-import { SPLASH_KEY, SplashScreen } from './screens/Splash'
+import { splashSeen, SplashScreen } from './screens/Splash'
 
 // HashRouter — щоб переходи працювали на статичному GitHub Pages без налаштувань сервера.
 export default function App() {
@@ -49,13 +49,8 @@ export default function App() {
 function Shell({ shakeTick }: { shakeTick: number }) {
   const { pathname, search: query } = useLocation()
   const fullScreen = pathname.startsWith('/search/') || pathname === '/search' || pathname.startsWith('/person') || pathname === '/splash'
-  // Перший вхід у сесії — сплеш (тап на ньому і дає дозвіл на звук).
-  let seen = false
-  try {
-    seen = sessionStorage.getItem(SPLASH_KEY) === '1'
-  } catch {
-    seen = true
-  }
+  // Кожне завантаження сторінки — сплеш (тап на ньому дає дозвіл на звук).
+  const seen = splashSeen()
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col">

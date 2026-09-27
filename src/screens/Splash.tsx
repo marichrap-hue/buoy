@@ -6,19 +6,18 @@ import { unlockSound } from '../lib/sound'
  * Сплеш при відкритті (27.09.2026): назва, слоган; знак — після затвердження. Тап будь-де →
  * Searches. Тап тут — той самий «перший дотик», якого браузер/iOS вимагає для
  * звуку, тож вилуплення бульбашок далі йде вже з «пухом».
- * Показується раз на сесію (sessionStorage), решта переходів — одразу в застосунок.
+ * Показується при КОЖНОМУ завантаженні сторінки (прапорець у пам'яті, не в
+ * sessionStorage): після перезавантаження браузер знову вимагає дотику для
+ * звуку, тож без сплешу бульбашки вилуплювались би тихо (27.09.2026).
  */
-export const SPLASH_KEY = 'buoy-splash-seen'
+let seenThisLoad = false
+export const splashSeen = () => seenThisLoad
 
 export function SplashScreen() {
   const navigate = useNavigate()
   const go = () => {
     unlockSound()
-    try {
-      sessionStorage.setItem(SPLASH_KEY, '1')
-    } catch {
-      /* приватний режим — просто йдемо далі */
-    }
+    seenThisLoad = true
     navigate('/searches', { replace: true })
   }
   return (
