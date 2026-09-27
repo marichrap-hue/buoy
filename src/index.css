@@ -24,6 +24,12 @@ body,
   overflow: hidden;
 }
 
+/* На iPhone/Safari 100% = висота з панелями браузера → мокап зсувається вниз
+   і верх зрізається. dvh — саме видима область (27.09.2026). */
+#root {
+  height: 100dvh;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

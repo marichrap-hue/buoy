@@ -9,12 +9,21 @@ const DEVICE_W = 415
 
 /** Масштаб, щоб телефон цілим вміщався у вікно (панель браузера невелика). */
 function useFitScale() {
-  const calc = () => Math.min(1, (window.innerHeight - 80) / DEVICE_H, (window.innerWidth - 32) / DEVICE_W)
+  // visualViewport — реальна видима область на iPhone (панелі Safari ховаються/з'являються).
+  const calc = () => {
+    const h = window.visualViewport?.height ?? window.innerHeight
+    const w = window.visualViewport?.width ?? window.innerWidth
+    return Math.min(1, (h - 80) / DEVICE_H, (w - 32) / DEVICE_W)
+  }
   const [scale, setScale] = useState(calc)
   useEffect(() => {
     const onResize = () => setScale(calc())
     window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+    }
   }, [])
   return scale
 }
