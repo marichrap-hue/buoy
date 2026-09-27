@@ -101,6 +101,7 @@ export function ConversationScreen() {
   const allMessages = [...messages, ...seededForwards]
   /** Контекстне меню репліки асистента: індекс повідомлення. */
   const [msgMenu, setMsgMenu] = useState<number | null>(null)
+  const anchors = useRef<(HTMLDivElement | null)[]>([])
   /** Контекстне меню картки подарунку (рішення 27.09.2026): id ідеї. */
   const [ideaMenu, setIdeaMenu] = useState<string | null>(null)
   const [replyTo, setReplyTo] = useState<string | null>(null)
@@ -292,10 +293,13 @@ export function ConversationScreen() {
               // Ідеї — теж відповідь асистента: картки всередині його бульбашки, з посиланням на сайт.
               <div key={i}>{renderIdeas()}</div>
             ) : (
-              <div key={i} className="relative">
+              <div key={i} className="relative" ref={(el) => {
+                  anchors.current[i] = el
+                }}>
                 <Bubble msg={m} onHold={m.role === 'assistant' ? () => setMsgMenu(i) : undefined} />
                 {msgMenu === i && (
                   <MessageMenu
+                    anchor={anchors.current[i]}
                     onClose={() => setMsgMenu(null)}
                     onReply={() => setReplyTo(m.text)}
                     onSend={() => setSendTo(m.text)}
@@ -451,22 +455,34 @@ function IdeaCardShell({
   children: React.ReactNode
 }) {
   const hold = useHold(onHold)
+  const ref = useRef<HTMLDivElement>(null)
   return (
     <div className="relative">
-      <div className={`relative select-none rounded-[20px] p-[15px] ${bought ? 'bg-[#EFE6FF] ring-2 ring-[#807CF7]' : 'bg-white'}`} {...hold}>
+      <div ref={ref} className={`relative select-none rounded-[20px] p-[15px] ${bought ? 'bg-[#EFE6FF] ring-2 ring-[#807CF7]' : 'bg-white'}`} {...hold}>
         {children}
       </div>
-      {open && <MessageMenu onClose={onClose} onReply={onReply} onSend={onSend} />}
+      {open && <MessageMenu anchor={ref.current} onClose={onClose} onReply={onReply} onSend={onSend} />}
     </div>
   )
 }
 
-/** Меню репліки асистента / картки ідеї: Reply · Send to another chat (iOS press-and-hold). */
-function MessageMenu({ onClose, onReply, onSend }: { onClose: () => void; onReply: () => void; onSend: () => void }) {
-  return (
+/**
+ * Меню репліки асистента / картки ідеї: Reply · Send to another chat (iOS
+ * press-and-hold). Рендериться порталом на рівень екрана з позицією від
+ * якоря: усередині бульбашки з backdrop-blur (окремий шар) меню опинялось би
+ * під підкладкою і не ловило тапи.
+ */
+function MessageMenu({ anchor, onClose, onReply, onSend }: { anchor: HTMLElement | null; onClose: () => void; onReply: () => void; onSend: () => void }) {
+  const screen = document.getElementById('phone-screen')!
+  const sr = screen.getBoundingClientRect()
+  const ar = anchor?.getBoundingClientRect()
+  const scale = sr.width / 393 || 1
+  const left = ar ? (ar.left - sr.left) / scale : 15
+  const top = ar ? (ar.bottom - sr.top) / scale + 5 : 200
+  return createPortal(
     <>
-      {createPortal(<button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 z-[1]" />, document.getElementById('phone-screen')!)}
-      <div className="absolute left-0 top-full z-20 mt-[5px] w-[240px] overflow-hidden rounded-[20px] bg-white/90 shadow-[0_10px_30px_rgba(23,20,54,0.18)] backdrop-blur-xl">
+      <button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 z-20" />
+      <div className="absolute z-30 w-[240px] overflow-hidden rounded-[20px] bg-white/90 shadow-[0_10px_30px_rgba(23,20,54,0.18)] backdrop-blur-xl" style={{ left, top: Math.min(top, 852 - 150) }}>
         {[
           { label: 'Reply', icon: faReply, act: onReply },
           { label: 'Send to another chat', icon: faShare, act: onSend },
@@ -485,7 +501,8 @@ function MessageMenu({ onClose, onReply, onSend }: { onClose: () => void; onRepl
           </button>
         ))}
       </div>
-    </>
+    </>,
+    screen,
   )
 }
 
