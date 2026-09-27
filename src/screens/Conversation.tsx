@@ -249,7 +249,8 @@ export function ConversationScreen() {
         </div>
       </div>
       {/* Контекст: дата · бюджет (коли відомий). Подія вже в заголовку — не дублюємо (27.09.2026). */}
-      <div className="relative z-10 flex shrink-0 gap-[5px] overflow-x-auto px-[15px] py-[10px] [scrollbar-width:none]">
+      {/* z-[6]: над стрічкою і краєм-розмиттям (z-5), але під шапкою (z-10), щоб меню «···» лягало поверх чипів. */}
+      <div className="relative z-[6] flex shrink-0 gap-[5px] overflow-x-auto px-[15px] py-[10px] [scrollbar-width:none]">
         <Chip>{search.date}</Chip>
         {search.budget && <Chip>{search.budget}</Chip>}
       </div>
@@ -391,7 +392,8 @@ function ContextMenu({
 }) {
   return (
     <>
-      {createPortal(<button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 z-10" />, document.getElementById('phone-screen')!)}
+      {/* Підкладка нижче шапки (z-[1] < z-10), інакше вона накриває саме меню і тапи по пунктах його лише закривають. */}
+      {createPortal(<button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 z-[1]" />, document.getElementById('phone-screen')!)}
       <div className="absolute right-0 top-[41px] z-20 w-[220px] overflow-hidden rounded-[20px] bg-white/90 shadow-[0_10px_30px_rgba(23,20,54,0.18)] backdrop-blur-xl">
         {items.map((it) => (
           <button
