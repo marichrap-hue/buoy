@@ -21,13 +21,21 @@ export interface Idea {
   occasion: string
 }
 
+/** Репліка асистента, переслана в іншу розмову («Send to another chat»). */
+export interface Forwarded {
+  toSearchId: string
+  fromTitle: string
+  text: string
+}
+
 interface State {
   people: Person[]
   searches: GiftSearch[]
   shortlist: Idea[]
+  forwarded: Forwarded[]
 }
 
-let state: State = { people: PEOPLE, searches: SEARCHES, shortlist: [] }
+let state: State = { people: PEOPLE, searches: SEARCHES, shortlist: [], forwarded: [] }
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((l) => l())
 const subscribe = (l: () => void) => {
@@ -114,5 +122,11 @@ export function markBought(searchId: string, ideaId: string) {
 export function markRead(id: string) {
   if (!state.searches.some((s) => s.id === id && s.unread)) return
   state = { ...state, searches: state.searches.map((s) => (s.id === id ? { ...s, unread: false } : s)) }
+  emit()
+}
+
+/** «Send to another chat»: репліка з'являється в тій розмові як переслана. */
+export function forwardMessage(f: Forwarded) {
+  state = { ...state, forwarded: [...state.forwarded, f] }
   emit()
 }

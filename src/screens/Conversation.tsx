@@ -1,4 +1,4 @@
-import { faArrowUp, faArrowUpRightFromSquare, faBookmark, faCheck, faChevronLeft, faEllipsis, faMicrophone, faPen, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
+import { faArrowUp, faArrowUpRightFromSquare, faBookmark, faCheck, faChevronLeft, faEllipsis, faMicrophone, faPen, faReply, faShare, faTrashCan, faXmark } from '@fortawesome/free-solid-svg-icons'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { Chip, PrimaryButton, SecondaryButton } from '../components/ui'
 import { CONVERSATIONS } from '../data/conversations'
-import { addFact, type Idea, markBought, markRead, removeSearch, saveIdea, updateSearch, useStore } from '../lib/store'
+import { addFact, forwardMessage, type Idea, markBought, markRead, removeSearch, saveIdea, updateSearch, useStore } from '../lib/store'
 import { toast } from '../lib/toast'
 
 /**
@@ -22,12 +22,16 @@ import { toast } from '../lib/toast'
  *  - картка «New thing I learned · Keep it?» у стрічці там, де це зрозуміло;
  *  - ідеї — 2–3 картки: «Save» (у Shortlist) і «I bought this» (закриває
  *    пошук, подарунок — в історію людини);
+ *  - довге натискання на репліці асистента (iOS: press-and-hold у Messages)
+ *    → контекстне меню «Reply» (цитата над полем вводу) і «Send to another
+ *    chat» (лист із вибором іншого пошуку; там репліка з'являється як
+ *    переслана) — рішення 27.09.2026;
  *  - таб-бару і струсу тут немає (екран із вводом тексту).
  * Сценарій брифу (5 тапів) заскриптовано для «Mum / Mother's Day»; решта
  * пошуків з моку мають готову переписку під свій стан (data/conversations),
  * нові — відкриття асистента і загальні відповіді.
  */
-type Msg = { role: 'assistant' | 'user'; text: string } | { role: 'fact' } | { role: 'ideas' }
+type Msg = { role: 'assistant' | 'user'; text: string; quote?: string; from?: string } | { role: 'fact' } | { role: 'ideas' }
 
 const IDEAS: Idea[] = [
   {
@@ -55,7 +59,7 @@ const IDEAS: Idea[] = [
 export function ConversationScreen() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const { people, shortlist, searches } = useStore()
+  const { people, shortlist, searches, forwarded } = useStore()
   // Живий пошук зі стору; після «I bought this» він зникає — тоді екран
   // тримає останній знімок, а не перескакує на інший пошук.
   const live = searches.find((s) => s.id === params.get('id'))
@@ -90,6 +94,15 @@ export function ConversationScreen() {
             },
           ],
   )
+  // Переслані з інших розмов — у кінці стрічки при відкритті.
+  const [seededForwards] = useState(() =>
+    forwarded.filter((f) => f.toSearchId === search?.id).map((f): Msg => ({ role: 'assistant', text: f.text, from: f.fromTitle })),
+  )
+  const allMessages = [...messages, ...seededForwards]
+  /** Контекстне меню репліки асистента: індекс повідомлення. */
+  const [msgMenu, setMsgMenu] = useState<number | null>(null)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [sendTo, setSendTo] = useState<string | null>(null)
   // Кнопки-відповіді готової переписки — до першої відповіді.
   const [seedReplies, setSeedReplies] = useState<string[] | undefined>(seed?.replies)
   // Ідеї на екрані: сценарій — після кроку 2; готова переписка — одразу.
@@ -138,6 +151,12 @@ export function ConversationScreen() {
     const text = draft.trim()
     if (!text) return
     setDraft('')
+    if (replyTo) {
+      // Відповідь на конкретну репліку: цитата в бульбашці.
+      setMessages((m) => [...m, { role: 'user', text, quote: replyTo }, { role: 'assistant', text: 'Got it — noted against that one.' }])
+      setReplyTo(null)
+      return
+    }
     reply(text)
   }
   const keepFact = () => {
@@ -259,14 +278,23 @@ export function ConversationScreen() {
       {/* Стрічка — на весь екран під шапкою і полем відповіді (паддінги = їхні висоти). */}
       <div ref={feedRef} className="absolute inset-0 overflow-y-auto px-[15px] pb-[110px] pt-[100px] [scrollbar-width:none]">
         <div className="flex flex-col gap-[15px]">
-          {messages.map((m, i) =>
+          {allMessages.map((m, i) =>
             m.role === 'fact' ? (
               <FactCard key={i} state={factState} count={person?.facts.length ?? 0} onKeep={keepFact} onDismiss={() => setFactState('dismissed')} />
             ) : m.role === 'ideas' ? (
               // Ідеї — теж відповідь асистента: картки всередині його бульбашки, з посиланням на сайт.
               <div key={i}>{renderIdeas()}</div>
             ) : (
-              <Bubble key={i} msg={m} />
+              <div key={i} className="relative">
+                <Bubble msg={m} onHold={m.role === 'assistant' ? () => setMsgMenu(i) : undefined} />
+                {msgMenu === i && (
+                  <MessageMenu
+                    onClose={() => setMsgMenu(null)}
+                    onReply={() => setReplyTo(m.text)}
+                    onSend={() => setSendTo(m.text)}
+                  />
+                )}
+              </div>
             ),
           )}
 
@@ -286,6 +314,16 @@ export function ConversationScreen() {
 
       {/* Поле відповіді: текст → «надіслати» (стрілка вгору, iOS Messages); порожнє → мікрофон. */}
       <div className="absolute inset-x-0 bottom-0 z-10 px-[15px] pb-[35px] pt-[10px]">
+        {replyTo && (
+          // Цитата над полем вводу (iOS Messages: reply preview), ✕ знімає.
+          <div className="mb-[5px] flex items-center gap-[10px] rounded-[20px] bg-white/70 py-[10px] pl-[15px] pr-[5px] backdrop-blur-xl">
+            <FontAwesomeIcon icon={faReply} style={{ fontSize: 13 }} className="shrink-0 text-[#5B56E0]" />
+            <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-ink/80">{replyTo}</span>
+            <button type="button" aria-label="Cancel reply" onClick={() => setReplyTo(null)} className="grid h-[32px] w-[32px] shrink-0 place-items-center rounded-full text-ink">
+              <FontAwesomeIcon icon={faXmark} style={{ fontSize: 14 }} />
+            </button>
+          </div>
+        )}
         <div className="flex h-[52px] items-center rounded-full bg-white/70 pl-[20px] pr-[5px] backdrop-blur-xl">
           <input
             value={draft}
@@ -308,6 +346,18 @@ export function ConversationScreen() {
         </div>
       </div>
 
+      {sendTo !== null && (
+        <SendToSheet
+          text={sendTo}
+          options={searches.filter((s) => s.id !== search.id)}
+          onClose={() => setSendTo(null)}
+          onPick={(target) => {
+            forwardMessage({ toSearchId: target.id, fromTitle: `${search.person} · ${search.occasion}`, text: sendTo })
+            setSendTo(null)
+            toast(`Sent to ${target.person} · ${target.occasion}`, faShare)
+          }}
+        />
+      )}
       {editing && <EditSearchSheet searchId={search.id} occasion={search.occasion} budget={search.budget} onClose={() => setEditing(false)} />}
       {confirmDelete && (
         <ConfirmDialog
@@ -331,12 +381,107 @@ export function ConversationScreen() {
  */
 const ASSISTANT_BUBBLE = 'mr-[50px] rounded-[20px] rounded-bl-[5px] border border-white/60 bg-white/45 px-[15px] py-[10px] text-[16px] leading-[22px] text-ink backdrop-blur-xl'
 
-function Bubble({ msg }: { msg: Msg }) {
+/** Довге натискання (500 мс) або правий клік — контекстне меню репліки. */
+function useHold(onHold?: () => void) {
+  const timer = useRef(0)
+  if (!onHold) return {}
+  const start = () => {
+    timer.current = window.setTimeout(onHold, 500)
+  }
+  const stop = () => window.clearTimeout(timer.current)
+  return {
+    onPointerDown: start,
+    onPointerUp: stop,
+    onPointerLeave: stop,
+    onPointerCancel: stop,
+    onContextMenu: (e: React.MouseEvent) => {
+      e.preventDefault()
+      stop()
+      onHold()
+    },
+  }
+}
+
+function Bubble({ msg, onHold }: { msg: Msg; onHold?: () => void }) {
+  const hold = useHold(onHold)
   if (msg.role !== 'assistant' && msg.role !== 'user') return null
   return msg.role === 'assistant' ? (
-    <p className={ASSISTANT_BUBBLE}>{msg.text}</p>
+    <div className={`${ASSISTANT_BUBBLE} select-none`} {...hold}>
+      {msg.from && (
+        <div className="flex items-center gap-[5px] pb-[5px] text-[13px] font-bold text-[#5B56E0]">
+          <FontAwesomeIcon icon={faShare} style={{ fontSize: 12 }} />
+          From {msg.from}
+        </div>
+      )}
+      {msg.text}
+    </div>
   ) : (
-    <p className="ml-[50px] self-end rounded-[20px] rounded-br-[5px] bg-white px-[15px] py-[10px] text-[16px] leading-[22px] text-ink">{msg.text}</p>
+    <div className="ml-[50px] self-end rounded-[20px] rounded-br-[5px] bg-white px-[15px] py-[10px] text-[16px] leading-[22px] text-ink">
+      {msg.quote && (
+        <div className="mb-[5px] border-l-2 border-[#807CF7] pl-[10px] text-[13px] font-semibold leading-[17px] text-ink/70">{msg.quote}</div>
+      )}
+      {msg.text}
+    </div>
+  )
+}
+
+/** Меню репліки асистента: Reply · Send to another chat (iOS press-and-hold). */
+function MessageMenu({ onClose, onReply, onSend }: { onClose: () => void; onReply: () => void; onSend: () => void }) {
+  return (
+    <>
+      {createPortal(<button type="button" aria-label="Close menu" onClick={onClose} className="absolute inset-0 z-[1]" />, document.getElementById('phone-screen')!)}
+      <div className="absolute left-0 top-full z-20 mt-[5px] w-[240px] overflow-hidden rounded-[20px] bg-white/90 shadow-[0_10px_30px_rgba(23,20,54,0.18)] backdrop-blur-xl">
+        {[
+          { label: 'Reply', icon: faReply, act: onReply },
+          { label: 'Send to another chat', icon: faShare, act: onSend },
+        ].map((it) => (
+          <button
+            key={it.label}
+            type="button"
+            onClick={() => {
+              onClose()
+              it.act()
+            }}
+            className="flex h-[50px] w-full items-center justify-between px-[20px] text-[16px] font-semibold text-ink active:bg-lavender"
+          >
+            {it.label}
+            <FontAwesomeIcon icon={it.icon} style={{ fontSize: 15 }} />
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+/** Лист «Send to»: інші активні пошуки. */
+function SendToSheet({ text, options, onClose, onPick }: { text: string; options: { id: string; person: string; occasion: string }[]; onClose: () => void; onPick: (s: { id: string; person: string; occasion: string }) => void }) {
+  return createPortal(
+    <div className="absolute inset-0 z-10 flex flex-col justify-end">
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-ink/30" />
+      <div className="relative flex max-h-[600px] flex-col rounded-t-[30px] bg-white px-[15px] pb-[35px] pt-[10px]">
+        <div className="mx-auto mb-[10px] h-[5px] w-[35px] rounded-full bg-ink/15" />
+        <div className="flex items-center justify-between pb-[15px]">
+          <h2 className="text-[22px] font-extrabold text-ink">Send to</h2>
+          <button type="button" aria-label="Close" onClick={onClose} className="grid h-[32px] w-[32px] place-items-center rounded-full bg-lavender text-ink">
+            <FontAwesomeIcon icon={faXmark} style={{ fontSize: 14 }} />
+          </button>
+        </div>
+        <p className="mb-[15px] truncate rounded-[20px] bg-lavender px-[15px] py-[10px] text-[13px] font-semibold text-ink/80">{text}</p>
+        <div className="flex min-h-0 flex-col gap-[10px] overflow-y-auto [scrollbar-width:none]">
+          {options.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onPick(s)}
+              className="flex h-[50px] items-center rounded-full bg-[#F7F3FF] px-[20px] text-left text-[16px] font-bold text-ink active:bg-lavender"
+            >
+              {s.person} · {s.occasion}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.getElementById('phone-screen')!,
   )
 }
 
