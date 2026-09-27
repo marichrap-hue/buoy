@@ -13,7 +13,8 @@ function getCtx(): AudioContext | null {
   if (typeof window === 'undefined' || !('AudioContext' in window)) return null
   if (!ctx) {
     ctx = new AudioContext()
-    if (import.meta.env.DEV) (window as unknown as { __sound?: unknown }).__sound = { ctx, pop: () => pop(120), played: () => played }
+    // Діагностика (і в проді): стан контексту та скільки разів зіграло.
+    ;(window as unknown as { __sound?: unknown }).__sound = { ctx, pop: () => pop(120), played: () => played }
   }
   return ctx
 }
