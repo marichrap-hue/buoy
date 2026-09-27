@@ -24,7 +24,7 @@ export function SplashScreen() {
     <button type="button" onClick={go} className="flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center text-ink">
       {/* Знак додамо, коли дизайнерка затвердить буйок (не рятувальний круг). */}
       <div className="text-[44px] font-extrabold leading-[50px] tracking-[-0.02em]">Buoy</div>
-      <div className="pt-[10px] text-[16px] font-semibold text-ink/80">We won't let you sink in gift-keeping.</div>
+      <div className="pt-[10px] text-[16px] font-semibold text-ink/80">We won't let you drown in the search for gifts.</div>
       <div className="absolute bottom-[80px] text-[13px] font-semibold text-ink/50">Tap to begin</div>
     </button>
   )
