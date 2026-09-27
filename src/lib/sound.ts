@@ -28,6 +28,7 @@ export function armSound() {
   // Не знімаємо слухачі: після HMR/сну контекст може знову стати suspended.
   window.addEventListener('pointerdown', unlock)
   window.addEventListener('touchstart', unlock)
+  window.addEventListener('click', unlock)
   window.addEventListener('keydown', unlock)
 }
 
@@ -35,8 +36,18 @@ export function armSound() {
 export function pop(size = 120) {
   const c = getCtx()
   if (!c) return
-  if (c.state === 'suspended') void c.resume()
-  if (c.state !== 'running') return
+  if (c.state !== 'running') {
+    // Контекст ще «спить» (до першого дотику): пробуємо розбудити і граємо,
+    // щойно він запрацює; якщо браузер не дозволить — просто тиша.
+    void c.resume().then(() => {
+      if (c.state === 'running') play(c, size)
+    })
+    return
+  }
+  play(c, size)
+}
+
+function play(c: AudioContext, size: number) {
   played++
   const t = c.currentTime
   // М'якше (27.09.2026): нижчий старт, повільніше падіння, плавніша атака,
