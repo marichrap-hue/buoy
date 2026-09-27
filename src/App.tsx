@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useShake } from './components/BubbleField'
 import { useReducedMotion } from './components/useReducedMotion'
+import { pop, soundState } from './lib/sound'
 import { PhoneFrame } from './components/PhoneFrame'
 import { TabBar } from './components/TabBar'
 import { ConversationScreen } from './screens/Conversation'
@@ -38,6 +39,7 @@ export default function App() {
           >
             Shake phone
           </button>
+          <SoundCheck />
         </div>
       </div>
     </HashRouter>
@@ -63,5 +65,30 @@ function Shell({ shakeTick }: { shakeTick: number }) {
       </div>
       {!fullScreen && <TabBar />}
     </>
+  )
+}
+
+/**
+ * Прототипний індикатор звуку під телефоном (27.09.2026): показує, чи браузер
+ * уже дозволив аудіо (після першого дотику), і кнопка «Test sound» грає «пух»
+ * гарантовано з жесту користувача.
+ */
+function SoundCheck() {
+  const [state, setState] = useState(soundState())
+  useEffect(() => {
+    const t = window.setInterval(() => setState(soundState()), 500)
+    return () => window.clearInterval(t)
+  }, [])
+  return (
+    <div className="flex items-center gap-[10px] text-[13px] text-ink">
+      <span className="opacity-60">Sound: {state === 'on' ? 'on' : state === 'none' ? 'unsupported' : 'waiting for a tap'}</span>
+      <button
+        type="button"
+        onClick={() => pop(120)}
+        className="rounded-full bg-white/70 px-[14px] py-[7px] font-semibold hover:bg-white"
+      >
+        Test sound
+      </button>
+    </div>
   )
 }

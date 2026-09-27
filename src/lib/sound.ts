@@ -87,3 +87,10 @@ function play(c: AudioContext, size: number) {
 
 // Самореєстрація: модуль перезавантажився (HMR) — слухачі теж. Виклик у main.tsx лишається сумісним.
 if (typeof window !== 'undefined') armSound()
+
+/** Стан звуку для індикатора: 'off' — контекст ще не створено / браузер не дав; 'on' — грає. */
+export function soundState(): 'on' | 'off' | 'none' {
+  if (typeof window === 'undefined' || !('AudioContext' in window)) return 'none'
+  if (!ctx) return 'off'
+  return ctx.state === 'running' ? 'on' : 'off'
+}
