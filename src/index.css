@@ -1,0 +1,55 @@
+@import 'tailwindcss';
+
+/* Палітра й шрифт — з брифу Buoy (product context, розділ 2). */
+@theme {
+  --font-sans: 'Alan Sans', ui-sans-serif, system-ui, sans-serif; /* рішення 26.09.2026: свіжий м'який гротеск (GF, 2025), один на все */
+
+  --color-periwinkle: #807cf7;       /* primary — акцент, активні стани */
+  --color-periwinkle-light: #a4a2ed; /* вторинні заливки */
+  --color-sky: #bed2fb;              /* холодний кінець градієнта */
+  --color-lavender: #ede6fd;         /* поверхні карток */
+  --color-muted: #9695b6;            /* ⚠ 2.89:1 на білому — лише великий текст/декор */
+  --color-ink: #171436;              /* основне чорнило, 17.65:1 на білому */
+  --color-bg-warm: #dec5fb;
+  --color-bg-cool: #999ae2;
+  --color-bg-light: #f6f4fe;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  /* Сцена не скролиться: скрол лише всередині екранів телефона —
+     інакше scrollIntoView / клік по нижній кнопці зсуває весь мокап. */
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: #e9e7f3; /* сцена навколо телефона */
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Непрочитане в бульбашці (27.09.2026): обводка плавно з'являється і гасне,
+ * цикл 3,2 с. Здригання самої бульбашки — у фізиці (BubbleField), там же
+ * і затухання; половина циклу — спокій.
+ */
+@keyframes buoy-ring {
+  0%, 100% { opacity: 0; }
+  35%, 55% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .buoy-unread-ring { animation: none !important; opacity: 1 !important; }
+}
+
+/* Тост: «лопається» при появі (масштаб з перельотом), тримається, гасне. */
+@keyframes buoy-toast {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.6); }
+  10%  { opacity: 1; transform: translateY(0) scale(1.06); }
+  16%  { transform: scale(1); }
+  80%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(4px) scale(0.96); }
+}
