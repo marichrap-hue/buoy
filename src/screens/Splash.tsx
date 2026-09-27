@@ -20,10 +20,11 @@ export function SplashScreen() {
     seenThisLoad = true
     navigate('/searches', { replace: true })
   }
-  // Буй + назва + слоган — один блок, відцентрований по вертикалі (27.09.2026).
+  // Буй + назва + слоган — один блок по центру ВСЬОГО екрана: pb-[54px] компенсує
+  // статус-бар зверху, viewBox починається з вушка буя (27.09.2026).
   return (
-    <button type="button" onClick={go} className="relative flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center text-ink">
-      <svg width="393" height="330" viewBox="0 40 393 330" aria-hidden>
+    <button type="button" onClick={go} className="relative flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center pb-[54px] text-ink">
+      <svg width="393" height="310" viewBox="0 60 393 310" aria-hidden>
         <g transform="translate(-3.5 0) rotate(22 200 220)">
           <path d="M200 60 C 190 60, 186 68, 186 78 L 186 96 L 214 96 L 214 78 C 214 68, 210 60, 200 60 Z" fill="#171436" opacity="0.85" />
           <rect x="191" y="96" width="18" height="48" rx="4" fill="#5B56E0" />
