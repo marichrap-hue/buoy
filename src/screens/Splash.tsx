@@ -26,7 +26,7 @@ export function SplashScreen() {
     <button type="button" onClick={go} className="relative min-h-0 flex-1 cursor-pointer text-ink">
       <svg viewBox="0 0 393 852" className="absolute inset-0 h-full w-full" aria-hidden>
         <g transform="translate(0 40)">
-          <g transform="translate(-3.5 0) rotate(12 200 220)">
+          <g transform="translate(-3.5 0) rotate(22 200 220)">
             <path d="M200 60 C 190 60, 186 68, 186 78 L 186 96 L 214 96 L 214 78 C 214 68, 210 60, 200 60 Z" fill="#171436" opacity="0.85" />
             <rect x="191" y="96" width="18" height="48" rx="4" fill="#5B56E0" />
             <path d="M200 140 C 258 140, 272 190, 272 236 C 272 300, 244 340, 200 340 C 156 340, 128 300, 128 236 C 128 190, 142 140, 200 140 Z" fill="#807CF7" />
